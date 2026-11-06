@@ -98,7 +98,7 @@ class ExecuteActionsSubjectTest {
 
     @Test
     void subjectCarriesRealmNameAndTheRequestedAction() throws MessagingException {
-        overrideSubject("{0} - Action required: {1}");
+        overrideSubject("Action required: {0}");
 
         realm.admin().users().get(userId).executeActionsEmail(List.of("UPDATE_PASSWORD"));
 
@@ -107,7 +107,7 @@ class ExecuteActionsSubjectTest {
 
     @Test
     void severalActionsAreListedInRequestOrder() throws MessagingException {
-        overrideSubject("{0} - Action required: {1}");
+        overrideSubject("Action required: {0}");
 
         realm.admin().users().get(userId).executeActionsEmail(List.of("VERIFY_EMAIL", "UPDATE_PASSWORD"));
 
@@ -115,19 +115,19 @@ class ExecuteActionsSubjectTest {
     }
 
     @Test
-    void stockSubjectIsUnchangedWhenTheThemeDoesNotUseTheArguments() throws MessagingException {
+    void realmNameIsPrependedWhenTheThemeDoesNotUseTheArguments() throws MessagingException {
         realm.admin().users().get(userId).executeActionsEmail(List.of("UPDATE_PASSWORD"));
 
-        assertEquals("Update Your Account", receivedSubject());
+        assertEquals("Istituto di Prova - Update Your Account", receivedSubject());
     }
 
     @Test
-    void otherEmailsAreNotTouched() throws MessagingException {
-        overrideSubject("{0} - Action required: {1}");
+    void otherEmailsGetTheRealmPrefixToo() throws MessagingException {
+        overrideSubject("Action required: {0}");
 
         realm.admin().users().get(userId).sendVerifyEmail();
 
-        assertEquals("Verify email", receivedSubject());
+        assertEquals("Istituto di Prova - Verify email", receivedSubject());
     }
 
     private void overrideSubject(String text) {

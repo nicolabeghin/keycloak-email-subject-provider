@@ -3,30 +3,36 @@
 
 # keycloak-email-subject-provider
 
-A Keycloak email template provider that lets the **subject** of the *execute-actions* email say what
-is being asked, and which realm is asking:
+A Keycloak email template provider that puts the **realm name in the subject of every email**, and
+lets the subject of the *execute-actions* email say what is being asked:
 
 ```
 Example Institute - Action required: Update Password
+Example Institute - Reset your password
+Example Institute - Your password was changed
 ```
 
-instead of the same generic "Update Your Account" for every action and every realm.
+instead of generic subjects that do not say who is writing, or the same "Update Your Account" for
+every action.
 
 ## Why this exists
 
 Keycloak formats the subject of the execute-actions email with an **empty argument list**, so a
-subject message such as `executeActionsSubject={0} - {1}` is sent with the placeholders unfilled.
-The realm name and the requested actions are only visible to the email *body* template. There is
+subject message such as `executeActionsSubject=Action required: {0}` is sent with the placeholder unfilled.
+The requested actions are only visible to the email *body* template. There is
 no theme-only way around it.
 
-This provider is the stock FreeMarker provider with one change: for `executeActionsSubject` it
-supplies two arguments. Every other email (password reset, email verification, event emails, ...)
-is handled by the stock code, untouched.
+This provider is the stock FreeMarker provider with two changes to subjects (bodies are never
+touched):
+
+1. **Realm prefix, on every email.** The subject becomes `<realm> - <subject>` (password reset, email
+   verification, event emails, ...). Nothing is added when the realm has no name to show. It cannot be
+   turned off: it is what the provider is for.
+2. **Arguments for `executeActionsSubject`**, described below.
 
 | Argument | Value |
 |---|---|
-| `{0}` | the realm name: its display name when set, otherwise the capitalized realm name (the same value the email templates show as `realmName`) |
-| `{1}` | the requested required actions, translated with the theme's `requiredAction.<ID>` messages and joined with `, `. An action without a translation is shown by its id. |
+| `{0}` | the requested required actions, translated with the theme's `requiredAction.<ID>` messages and joined with `, `. An action without a translation is shown by its id. |
 
 ## Install
 
@@ -41,10 +47,10 @@ explicitly.)
 
 ## Use
 
-Write the subject in your email theme's `messages_<locale>.properties`, using the two arguments:
+Write the subject in your email theme's `messages_<locale>.properties`, using the argument:
 
 ```properties
-executeActionsSubject={0} - Action required: {1}
+executeActionsSubject=Action required: {0}
 ```
 
 Or, without touching the theme, override it per realm with the admin API (realm localization),
@@ -54,8 +60,7 @@ which takes effect immediately:
 PUT /admin/realms/{realm}/localization/{locale}/executeActionsSubject
 ```
 
-If the message does not use `{0}`/`{1}` the subject is exactly what it was before, so installing the
-provider changes nothing until you opt in.
+If the message does not use `{0}` the subject is the stock one, with the realm prefix.
 
 ## Compatibility
 
@@ -64,7 +69,7 @@ does not promise to keep stable. It is built and tested against one Keycloak ver
 
 | Provider | Keycloak |
 |---|---|
-| 0.1.0 | 26.8.1 |
+| 0.2.0 | 26.8.1 |
 
 When you move to another Keycloak version, change `keycloak.version` in `pom.xml` and run the tests:
 the integration test fails loudly if the provider is no longer registered or no longer takes effect.
@@ -90,7 +95,7 @@ Push a tag; the GitHub Action builds, runs the tests and attaches `email-subject
 the release.
 
 ```bash
-git tag 0.1.0 && git push origin 0.1.0
+git tag 0.2.0 && git push origin 0.2.0
 ```
 
 ## License

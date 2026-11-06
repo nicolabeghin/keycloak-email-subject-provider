@@ -40,13 +40,26 @@ public final class SubjectArguments {
     }
 
     /**
-     * Arguments of {@code executeActionsSubject}: {@code {0}} is the realm name (the display name
-     * when set, the same value the email template shows as {@code realmName}) and {@code {1}} the
-     * requested actions, translated and joined with {@code ", "}.
+     * Arguments of {@code executeActionsSubject}: {@code {0}} is the requested actions, translated
+     * and joined with {@code ", "}.
      */
-    public static List<Object> executeActions(String realmName, List<String> actionIds, Function<String, String> labelOf) {
-        String actions = actionIds.stream().map(labelOf).collect(Collectors.joining(", "));
-        return List.of(realmName, actions);
+    public static List<Object> executeActions(List<String> actionIds, Function<String, String> labelOf) {
+        return List.of(actionIds.stream().map(labelOf).collect(Collectors.joining(", ")));
+    }
+
+    /** Separator between the realm name and the subject. */
+    static final String PREFIX_SEPARATOR = " - ";
+
+    /**
+     * The subject prefixed with {@code "<realm> - "}, so every email says which realm sends it
+     * (the display name when set, the same value the email templates show as {@code realmName}).
+     * Returned as is when there is no realm name to show.
+     */
+    public static String withRealmPrefix(String realmName, String subject) {
+        if (realmName == null || realmName.isBlank() || subject == null) {
+            return subject;
+        }
+        return realmName + PREFIX_SEPARATOR + subject;
     }
 
     /**

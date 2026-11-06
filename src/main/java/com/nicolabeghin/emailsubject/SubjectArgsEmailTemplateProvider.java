@@ -28,12 +28,16 @@ import org.keycloak.models.Constants;
 import org.keycloak.models.KeycloakSession;
 
 /**
- * Stock FreeMarker email provider, except that the subject of the execute-actions email receives
- * arguments. Keycloak itself formats that subject with an empty argument list, so the realm name and
- * the requested actions are only reachable from the body.
+ * Stock FreeMarker email provider with two changes to email subjects:
  *
- * <p>Only {@value SubjectArguments#EXECUTE_ACTIONS_SUBJECT} is touched; every other email is handled
- * by the parent unchanged.
+ * <ul>
+ *   <li>the subject of the execute-actions email receives arguments (Keycloak itself formats it with
+ *       an empty argument list, so the realm name and the requested actions are only reachable from
+ *       the body);
+ *   <li>every subject is prefixed with the realm name.
+ * </ul>
+ *
+ * Bodies are never touched.
  */
 public class SubjectArgsEmailTemplateProvider extends FreeMarkerEmailTemplateProvider {
 
@@ -44,16 +48,21 @@ public class SubjectArgsEmailTemplateProvider extends FreeMarkerEmailTemplatePro
     @Override
     protected EmailTemplate processTemplate(String subjectKey, List<Object> subjectAttributes, String template,
             Map<String, Object> attributes) throws EmailException {
-        if (!SubjectArguments.EXECUTE_ACTIONS_SUBJECT.equals(subjectKey)) {
-            return super.processTemplate(subjectKey, subjectAttributes, template, attributes);
-        }
+        EmailTemplate email = SubjectArguments.EXECUTE_ACTIONS_SUBJECT.equals(subjectKey)
+                ? processExecuteActions(subjectKey, template, attributes)
+                : super.processTemplate(subjectKey, subjectAttributes, template, attributes);
+        return new EmailTemplate(SubjectArguments.withRealmPrefix(getRealmName(), email.getSubject()),
+                email.getTextBody(), email.getHtmlBody());
+    }
+
+    private EmailTemplate processExecuteActions(String subjectKey, String template, Map<String, Object> attributes)
+            throws EmailException {
         try {
             // same locale and messages the parent will use to format the subject
             Locale locale = session.getContext().resolveLocale(user,
                     Boolean.parseBoolean(String.valueOf(attributes.get(Constants.IGNORE_ACCEPT_LANGUAGE_HEADER))));
             Properties messages = getTheme().getEnhancedMessages(realm, locale);
             List<Object> arguments = SubjectArguments.executeActions(
-                    getRealmName(),
                     SubjectArguments.actionIds(attributes.get(SubjectArguments.REQUIRED_ACTIONS_ATTRIBUTE)),
                     SubjectArguments.labels(messages));
             return super.processTemplate(subjectKey, arguments, template, attributes);
