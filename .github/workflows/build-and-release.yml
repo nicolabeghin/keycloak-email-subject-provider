@@ -1,0 +1,62 @@
+name: Build, test and release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write # needed by the release step only; the build itself reads the repo
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up JDK
+      uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: 17
+
+    - name: Check JDK version
+      run: java --version
+
+    - name: Cache Maven packages
+      uses: actions/cache@v6
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    # Runs the unit tests and the integration test (embedded Keycloak + in-JVM GreenMail SMTP server).
+    # The embedded Keycloak binds localhost:8080, which is free on a runner.
+    - name: Build with Maven
+      run: mvn --batch-mode --update-snapshots package
+
+    - name: Upload test reports
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: surefire-reports
+        path: target/surefire-reports
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: email-subject-provider.jar
+        path: target/email-subject-provider.jar
+        if-no-files-found: error
+
+    - name: Release
+      uses: softprops/action-gh-release@v3
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: target/email-subject-provider.jar
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
